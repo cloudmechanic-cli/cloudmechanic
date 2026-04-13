@@ -49,22 +49,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	start := time.Now()
 
-	// Build base AWS config.
-	var cfgOpts []func(*awsconfig.LoadOptions) error
-	if flagRegion != "" {
-		cfgOpts = append(cfgOpts, awsconfig.WithRegion(flagRegion))
-	}
-	if flagProfile != "" {
-		cfgOpts = append(cfgOpts, awsconfig.WithSharedConfigProfile(flagProfile))
-	}
-
-	cfg, err := awsconfig.LoadDefaultConfig(ctx, cfgOpts...)
-	if err != nil {
-		return fmt.Errorf("unable to load AWS config: %w", err)
-	}
-
-	// Determine which regions to scan.
-	regions, err := resolveRegions(ctx, cfg)
+	cfg, regions, err := LoadAWSConfig(ctx, flagRegion, flagProfile, flagAllRegions)
 	if err != nil {
 		return err
 	}
@@ -76,7 +61,39 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Build scanners for each region.
+	allScanners := BuildScanners(cfg, regions)
+	issues, errs := RunScanners(ctx, allScanners)
+
+	report.Print(os.Stdout, issues, errs, time.Since(start), flagOutput)
+
+	return nil
+}
+
+// LoadAWSConfig builds the AWS config and resolves target regions.
+func LoadAWSConfig(ctx context.Context, region, profile string, allRegions bool) (aws.Config, []string, error) {
+	var cfgOpts []func(*awsconfig.LoadOptions) error
+	if region != "" {
+		cfgOpts = append(cfgOpts, awsconfig.WithRegion(region))
+	}
+	if profile != "" {
+		cfgOpts = append(cfgOpts, awsconfig.WithSharedConfigProfile(profile))
+	}
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, cfgOpts...)
+	if err != nil {
+		return aws.Config{}, nil, fmt.Errorf("unable to load AWS config: %w", err)
+	}
+
+	regions, err := resolveRegions(ctx, cfg, allRegions)
+	if err != nil {
+		return aws.Config{}, nil, err
+	}
+
+	return cfg, regions, nil
+}
+
+// BuildScanners creates all scanner instances for the given regions.
+func BuildScanners(cfg aws.Config, regions []string) []scanner.Scanner {
 	var allScanners []scanner.Scanner
 	for _, region := range regions {
 		regionCfg := cfg.Copy()
@@ -118,18 +135,12 @@ func runScan(cmd *cobra.Command, args []string) error {
 	iamClient := iam.NewFromConfig(cfg)
 	allScanners = append(allScanners, &scanner.NoMFAScanner{Client: iamClient})
 
-	// Run all scanners concurrently.
-	issues, errs := runScanners(ctx, allScanners)
-
-	// Render report.
-	report.Print(os.Stdout, issues, errs, time.Since(start), flagOutput)
-
-	return nil
+	return allScanners
 }
 
 // resolveRegions returns the list of regions to scan.
-func resolveRegions(ctx context.Context, cfg aws.Config) ([]string, error) {
-	if !flagAllRegions {
+func resolveRegions(ctx context.Context, cfg aws.Config, allRegions bool) ([]string, error) {
+	if !allRegions {
 		region := cfg.Region
 		if region == "" {
 			region = "us-east-1"
@@ -157,8 +168,8 @@ func resolveRegions(ctx context.Context, cfg aws.Config) ([]string, error) {
 	return regions, nil
 }
 
-// runScanners executes all scanners concurrently using goroutines and channels.
-func runScanners(ctx context.Context, scanners []scanner.Scanner) ([]scanner.Issue, []error) {
+// RunScanners executes all scanners concurrently using goroutines and channels.
+func RunScanners(ctx context.Context, scanners []scanner.Scanner) ([]scanner.Issue, []error) {
 	type result struct {
 		issues []scanner.Issue
 		err    error
@@ -176,7 +187,6 @@ func runScanners(ctx context.Context, scanners []scanner.Scanner) ([]scanner.Iss
 		}(s)
 	}
 
-	// Close channel once all goroutines complete.
 	go func() {
 		wg.Wait()
 		close(ch)
