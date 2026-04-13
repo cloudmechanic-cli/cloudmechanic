@@ -10,44 +10,49 @@ var (
 	colorCyan     = lipgloss.Color("#00BFFF")
 	colorDim      = lipgloss.Color("#666666")
 	colorWhite    = lipgloss.Color("#FFFFFF")
-	colorBg       = lipgloss.Color("#1A1A2E")
-	colorSidebar  = lipgloss.Color("#16213E")
 	colorSelected = lipgloss.Color("#0F3460")
+	colorSearch   = lipgloss.Color("#E040FB")
 )
 
-// Layout styles.
+// Header.
+var headerStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(colorCyan).
+	Padding(0, 1)
+
+// Pane borders — focused vs unfocused.
 var (
-	headerStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colorCyan).
-			Padding(0, 1)
+	focusedBorder = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colorCyan)
 
-	sidebarStyle = lipgloss.NewStyle().
-			Background(colorSidebar).
-			Padding(1, 2).
-			MarginRight(1)
+	unfocusedBorder = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colorDim)
+)
 
+// Sidebar.
+var (
 	sidebarTitleStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(colorCyan).
-				MarginBottom(1)
+				Foreground(colorCyan)
 
-	regionActiveStyle = lipgloss.NewStyle().
-				Foreground(colorGreen).
-				Bold(true)
+	regionSelectedStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorWhite).
+				Background(colorSelected).
+				Padding(0, 1)
 
-	regionIdleStyle = lipgloss.NewStyle().
-			Foreground(colorDim)
+	regionNormalStyle = lipgloss.NewStyle().
+				Foreground(colorWhite).
+				Padding(0, 1)
 
-	mainPanelStyle = lipgloss.NewStyle().
-			Padding(1, 2)
-
-	statusBarStyle = lipgloss.NewStyle().
+	regionDimStyle = lipgloss.NewStyle().
 			Foreground(colorDim).
 			Padding(0, 1)
 )
 
-// Issue severity styles.
+// Issue list.
 var (
 	criticalBadge = lipgloss.NewStyle().
 			Bold(true).
@@ -70,6 +75,21 @@ var (
 				Bold(true).
 				Padding(0, 1)
 
+	tableHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorCyan).
+				Padding(0, 1).
+				Underline(true)
+
+	groupHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorWarning).
+				Padding(0, 1).
+				MarginTop(1)
+)
+
+// Detail pane.
+var (
 	detailLabelStyle = lipgloss.NewStyle().
 				Foreground(colorCyan).
 				Bold(true)
@@ -80,7 +100,25 @@ var (
 	suggestionStyle = lipgloss.NewStyle().
 			Foreground(colorGreen).
 			Italic(true)
+)
 
+// Status / footer.
+var (
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(colorDim).
+			Padding(0, 1)
+
+	filterActiveStyle = lipgloss.NewStyle().
+				Foreground(colorCyan).
+				Bold(true)
+
+	searchStyle = lipgloss.NewStyle().
+			Foreground(colorSearch).
+			Bold(true)
+)
+
+// Misc.
+var (
 	spinnerStyle = lipgloss.NewStyle().
 			Foreground(colorCyan)
 
@@ -98,4 +136,7 @@ var (
 	countGreenStyle = lipgloss.NewStyle().
 			Foreground(colorGreen).
 			Bold(true)
+
+	dimStyle = lipgloss.NewStyle().
+			Foreground(colorDim)
 )

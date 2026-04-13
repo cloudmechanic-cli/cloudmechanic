@@ -92,6 +92,22 @@ func LoadAWSConfig(ctx context.Context, region, profile string, allRegions bool)
 	return cfg, regions, nil
 }
 
+// regionScanner wraps a Scanner and tags all issues with the region they came from.
+type regionScanner struct {
+	inner  scanner.Scanner
+	region string
+}
+
+func (rs *regionScanner) Name() string { return rs.inner.Name() }
+
+func (rs *regionScanner) Scan(ctx context.Context) ([]scanner.Issue, error) {
+	issues, err := rs.inner.Scan(ctx)
+	for i := range issues {
+		issues[i].Region = rs.region
+	}
+	return issues, err
+}
+
 // BuildScanners creates all scanner instances for the given regions.
 func BuildScanners(cfg aws.Config, regions []string) []scanner.Scanner {
 	var allScanners []scanner.Scanner
@@ -107,7 +123,7 @@ func BuildScanners(cfg aws.Config, regions []string) []scanner.Scanner {
 		ddbClient := dynamodb.NewFromConfig(regionCfg)
 		lambdaClient := lambda.NewFromConfig(regionCfg)
 
-		allScanners = append(allScanners,
+		regional := []scanner.Scanner{
 			// EC2
 			&scanner.UnattachedEBSScanner{Client: ec2Client},
 			&scanner.OpenSecurityGroupScanner{Client: ec2Client},
@@ -128,12 +144,19 @@ func BuildScanners(cfg aws.Config, regions []string) []scanner.Scanner {
 			// Lambda
 			&scanner.LambdaRuntimeScanner{Client: lambdaClient},
 			&scanner.LambdaPublicURLScanner{Client: lambdaClient},
-		)
+		}
+
+		for _, s := range regional {
+			allScanners = append(allScanners, &regionScanner{inner: s, region: region})
+		}
 	}
 
 	// IAM is global — only run once regardless of region count.
 	iamClient := iam.NewFromConfig(cfg)
-	allScanners = append(allScanners, &scanner.NoMFAScanner{Client: iamClient})
+	allScanners = append(allScanners, &regionScanner{
+		inner:  &scanner.NoMFAScanner{Client: iamClient},
+		region: "global",
+	})
 
 	return allScanners
 }

@@ -28,6 +28,7 @@ type Issue struct {
 	ResourceID  string
 	Description string
 	Suggestion  string
+	Region      string // AWS region where the issue was found ("global" for IAM)
 }
 
 // Scanner is the interface that all specific checks must implement.
