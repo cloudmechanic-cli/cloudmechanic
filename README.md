@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="#installation"><img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go" alt="Go version"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go" alt="Go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://github.com/cloudmechanic-cli/cloudmechanic/releases"><img src="https://img.shields.io/github/v/release/cloudmechanic-cli/cloudmechanic?color=green" alt="Release"></a>
 </p>
@@ -52,51 +52,102 @@ Security Issues (3):
    Total issues: 3 (3 critical, 0 warnings)
 ```
 
+## Quick Start
+
+Get scanning in under 2 minutes:
+
+```bash
+# 1. Install
+brew tap cloudmechanic-cli/tap && brew install cloudmechanic
+
+# 2. Configure AWS credentials (skip if already configured)
+aws configure
+
+# 3. Scan
+cloudmechanic scan
+
+# 4. Or launch the interactive dashboard
+cloudmechanic dashboard
+```
+
 ## Prerequisites
 
-1. **Go 1.21+** (only if building from source)
-2. **AWS CLI configured** with valid credentials:
-   ```bash
-   aws configure
-   # or export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION
-   ```
-3. **IAM permissions** — the tool needs read-only access. At minimum:
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Action": [
-           "ec2:DescribeVolumes",
-           "ec2:DescribeSecurityGroups",
-           "ec2:DescribeAddresses",
-           "ec2:DescribeSnapshots",
-           "ec2:DescribeRegions",
-           "ec2:DescribeNatGateways",
-           "ec2:DescribeRouteTables",
-           "ec2:DescribeVpcs",
-           "ec2:DescribeFlowLogs",
-           "s3:ListAllMyBuckets",
-           "s3:GetPublicAccessBlock",
-           "s3:GetEncryptionConfiguration",
-           "s3:GetBucketVersioning",
-           "rds:DescribeDBInstances",
-           "cloudwatch:GetMetricData",
-           "dynamodb:ListTables",
-           "dynamodb:DescribeContinuousBackups",
-           "dynamodb:DescribeTable",
-           "lambda:ListFunctions",
-           "lambda:GetFunctionUrlConfig",
-           "iam:ListUsers",
-           "iam:ListMFADevices",
-           "sts:GetCallerIdentity"
-         ],
-         "Resource": "*"
-       }
-     ]
-   }
-   ```
+### AWS Credentials
+
+CloudMechanic needs valid AWS credentials to read your account resources. It **never modifies** anything — all operations are read-only.
+
+**Option A — AWS CLI (recommended):**
+```bash
+aws configure
+# Enter your Access Key ID, Secret Access Key, and default region
+```
+
+**Option B — Environment variables:**
+```bash
+export AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
+export AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+export AWS_REGION="us-east-1"
+```
+
+**Option C — Named profiles** (for multi-account setups):
+```bash
+aws configure --profile production
+cloudmechanic scan --profile production
+```
+
+### IAM Permissions
+
+The simplest approach is to attach the **AWS-managed `ReadOnlyAccess` policy** to your IAM user or role. This grants all the permissions CloudMechanic needs.
+
+If you prefer a minimal least-privilege policy:
+
+<details>
+<summary>Click to expand minimal IAM policy</summary>
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVolumes",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeSnapshots",
+        "ec2:DescribeRegions",
+        "ec2:DescribeNatGateways",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeFlowLogs",
+        "s3:ListAllMyBuckets",
+        "s3:GetPublicAccessBlock",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucketVersioning",
+        "rds:DescribeDBInstances",
+        "cloudwatch:GetMetricData",
+        "dynamodb:ListTables",
+        "dynamodb:DescribeContinuousBackups",
+        "dynamodb:DescribeTable",
+        "lambda:ListFunctions",
+        "lambda:GetFunctionUrlConfig",
+        "iam:ListUsers",
+        "iam:ListMFADevices",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+</details>
+
+### Build from Source (optional)
+
+Only required if you're not using Homebrew or the pre-built binaries:
+
+- **Go 1.24+**
 
 ## Installation
 
@@ -175,6 +226,46 @@ cloudmechanic version
 cloudmechanic scan --profile staging --region eu-west-1 -o json
 ```
 
+## Interactive Dashboard (TUI)
+
+Launch a full-screen terminal dashboard with real-time scanning, region sidebar, and expandable issue details:
+
+```bash
+cloudmechanic dashboard
+```
+
+```bash
+cloudmechanic dashboard --all-regions
+cloudmechanic dashboard --profile production
+```
+
+```
+  ______  __                    __  __  ___              __                   _
+ / ____/ / /____   __  __ ____/ / /  |/  /___   _____  / /_   ____ _ ____   (_)_____
+/ /     / // __ \ / / / // __  / / /|_/ // _ \ / ___/ / __ \ / __ '// __ \ / // ___/
+/ /___ / // /_/ // /_/ // /_/ / / /  / //  __// /__  / / / // /_/ // / / // // /__
+\____//_/ \____/ \__,_/ \__,_/ /_/  /_/ \___/ \___/ /_/ /_/ \__,_//_/ /_//_/ \___/
+
+  REGIONS            CRITICAL  Open SG sg-0db0d4a (caf-bastion-sg) allows SSH from 0.0.0.0/0
+  * us-east-1        WARNING   Unattached EBS vol-0abc123 in available state
+                     CRITICAL  IAM user admin@corp has no MFA device enabled
+  SUMMARY              ...
+  3 Critical
+  2 Warnings
+  5 Total
+```
+
+### Dashboard Keybindings
+
+| Key | Action |
+|-----|--------|
+| `j` / `Down Arrow` | Move to next issue |
+| `k` / `Up Arrow` | Move to previous issue |
+| `Enter` | Expand issue — show resource ID, scanner, and remediation steps |
+| `Esc` | Collapse expanded issue |
+| `R` | Re-run the scan |
+| `Q` / `Ctrl+C` | Quit the dashboard |
+
 ## Current Scanners
 
 | Scanner | Type | What It Finds |
@@ -208,6 +299,7 @@ cloudmechanic scan --profile staging --region eu-west-1 -o json
 - [x] VPC Flow Logs & unused NAT Gateway checks
 - [x] Lambda deprecated runtime & public URL checks
 - [x] S3 encryption & versioning checks
+- [x] Interactive TUI dashboard (`cloudmechanic dashboard`)
 - [ ] Custom severity thresholds
 - [ ] HTML report export
 - [ ] Slack / webhook notifications
