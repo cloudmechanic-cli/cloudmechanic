@@ -45,7 +45,7 @@ changelog:
 
 brews:
   - repository:
-      owner: "cloudmechanic"
+      owner: "mazenessam77"
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
@@ -59,7 +59,7 @@ brews:
 
 release:
   github:
-    owner: "cloudmechanic"
+    owner: "mazenessam77"
     name: cloudmechanic
   draft: false
   prerelease: auto
