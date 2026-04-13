@@ -43,19 +43,21 @@ changelog:
       - "^chore:"
       - "^ci:"
 
-brews:
-  - repository:
-      owner: "mazenessam77"
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
-    homepage: "https://github.com/cloudmechanic/cloudmechanic"
-    description: "An OBD scanner for your AWS environment. Find cost leaks and security vulnerabilities in seconds."
-    license: "MIT"
-    install: |
-      bin.install "cloudmechanic"
-    test: |
-      system "#{bin}/cloudmechanic", "--help"
+# Uncomment the brews section below once you create the homebrew-tap repo
+# and add the HOMEBREW_TAP_GITHUB_TOKEN secret to this repo's settings.
+# brews:
+#   - repository:
+#       owner: "mazenessam77"
+#       name: homebrew-tap
+#       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+#     directory: Formula
+#     homepage: "https://github.com/mazenessam77/cloudmechanic"
+#     description: "An OBD scanner for your AWS environment. Find cost leaks and security vulnerabilities in seconds."
+#     license: "MIT"
+#     install: |
+#       bin.install "cloudmechanic"
+#     test: |
+#       system "#{bin}/cloudmechanic", "--help"
 
 release:
   github:
