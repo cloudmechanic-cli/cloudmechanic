@@ -7,7 +7,7 @@
 <p align="center">
   <a href="#installation"><img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go" alt="Go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/mazenessam77/cloudmechanic/releases"><img src="https://img.shields.io/github/v/release/mazenessam77/cloudmechanic?color=green" alt="Release"></a>
+  <a href="https://github.com/cloudmechanic-cli/cloudmechanic/releases"><img src="https://img.shields.io/github/v/release/cloudmechanic-cli/cloudmechanic?color=green" alt="Release"></a>
 </p>
 
 ---
@@ -103,24 +103,24 @@ Security Issues (3):
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap mazenessam77/tap
+brew tap cloudmechanic-cli/tap
 brew install cloudmechanic
 ```
 
 ### Go Install
 
 ```bash
-go install github.com/mazenessam77/cloudmechanic@latest
+go install github.com/cloudmechanic-cli/cloudmechanic@latest
 ```
 
 ### Download Binary
 
-Grab the latest release for your platform from the [Releases](https://github.com/mazenessam77/cloudmechanic/releases) page.
+Grab the latest release for your platform from the [Releases](https://github.com/cloudmechanic-cli/cloudmechanic/releases) page.
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/mazenessam77/cloudmechanic.git
+git clone https://github.com/cloudmechanic-cli/cloudmechanic.git
 cd cloudmechanic
 go build -o cloudmechanic .
 ```

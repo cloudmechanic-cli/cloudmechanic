@@ -18,8 +18,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/cloudmechanic/cloudmechanic/internal/report"
-	"github.com/cloudmechanic/cloudmechanic/internal/scanner"
+	"github.com/cloudmechanic-cli/cloudmechanic/internal/report"
+	"github.com/cloudmechanic-cli/cloudmechanic/internal/scanner"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )

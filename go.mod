@@ -1,4 +1,4 @@
-module github.com/cloudmechanic/cloudmechanic
+module github.com/cloudmechanic-cli/cloudmechanic
 
 go 1.24
 

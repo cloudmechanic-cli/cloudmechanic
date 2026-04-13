@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudmechanic/cloudmechanic/internal/scanner"
+	"github.com/cloudmechanic-cli/cloudmechanic/internal/scanner"
 	"github.com/fatih/color"
 )
 

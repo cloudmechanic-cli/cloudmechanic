@@ -45,11 +45,11 @@ changelog:
 
 brews:
   - repository:
-      owner: "mazenessam77"
+      owner: "cloudmechanic-cli"
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/mazenessam77/cloudmechanic"
+    homepage: "https://github.com/cloudmechanic-cli/cloudmechanic"
     description: "An OBD scanner for your AWS environment. Find cost leaks and security vulnerabilities in seconds."
     license: "MIT"
     install: |
@@ -59,7 +59,7 @@ brews:
 
 release:
   github:
-    owner: "mazenessam77"
+    owner: "cloudmechanic-cli"
     name: cloudmechanic
   draft: false
   prerelease: auto

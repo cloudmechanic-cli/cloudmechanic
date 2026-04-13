@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/cloudmechanic/cloudmechanic/cmd"
+	"github.com/cloudmechanic-cli/cloudmechanic/cmd"
 )
 
 // Populated by GoReleaser ldflags.
