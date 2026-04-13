@@ -73,10 +73,21 @@ Security Issues (3):
            "ec2:DescribeAddresses",
            "ec2:DescribeSnapshots",
            "ec2:DescribeRegions",
+           "ec2:DescribeNatGateways",
+           "ec2:DescribeRouteTables",
+           "ec2:DescribeVpcs",
+           "ec2:DescribeFlowLogs",
            "s3:ListAllMyBuckets",
            "s3:GetPublicAccessBlock",
+           "s3:GetEncryptionConfiguration",
+           "s3:GetBucketVersioning",
            "rds:DescribeDBInstances",
            "cloudwatch:GetMetricData",
+           "dynamodb:ListTables",
+           "dynamodb:DescribeContinuousBackups",
+           "dynamodb:DescribeTable",
+           "lambda:ListFunctions",
+           "lambda:GetFunctionUrlConfig",
            "iam:ListUsers",
            "iam:ListMFADevices",
            "sts:GetCallerIdentity"
@@ -174,6 +185,14 @@ cloudmechanic scan --profile staging --region eu-west-1 -o json
 | **Idle RDS Instances** | Cost Leak | RDS instances with 0 connections over the last 7 days |
 | **Unused Elastic IPs** | Cost Leak | Elastic IPs not associated with any resource ($3.60/mo each) |
 | **Old EBS Snapshots** | Cost Leak | EBS snapshots older than 90 days |
+| **DynamoDB Without Backups** | Security | Tables without Point-in-Time Recovery (PITR) |
+| **DynamoDB Provisioned Capacity** | Cost Leak | Tables using provisioned mode that may benefit from on-demand |
+| **Unused NAT Gateways** | Cost Leak | NAT Gateways not referenced in any route table (~$32/mo) |
+| **VPCs Without Flow Logs** | Security | VPCs with no Flow Logs for network auditing |
+| **Lambda Deprecated Runtimes** | Security | Functions running on EOL runtimes without security patches |
+| **Lambda Public Function URLs** | Security | Functions with public URLs and no authentication |
+| **S3 Buckets Without Encryption** | Security | Buckets with no default server-side encryption |
+| **S3 Buckets Without Versioning** | Cost Leak | Buckets without versioning (risk of data loss) |
 
 ## Roadmap
 
@@ -184,9 +203,14 @@ cloudmechanic scan --profile staging --region eu-west-1 -o json
 - [x] Old EBS Snapshots (>90 days)
 - [x] JSON / CSV output formats (`--output json`, `--output csv`)
 - [x] Multi-region scanning (`--all-regions`)
+- [x] DynamoDB backup & capacity checks
+- [x] VPC Flow Logs & unused NAT Gateway checks
+- [x] Lambda deprecated runtime & public URL checks
+- [x] S3 encryption & versioning checks
 - [ ] Custom severity thresholds
 - [ ] HTML report export
 - [ ] Slack / webhook notifications
+- [ ] Cost estimation per issue
 
 ## Contributing
 

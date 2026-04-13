@@ -10,9 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -85,14 +87,30 @@ func runScan(cmd *cobra.Command, args []string) error {
 		rdsClient := rds.NewFromConfig(regionCfg)
 		cwClient := cloudwatch.NewFromConfig(regionCfg)
 		stsClient := sts.NewFromConfig(regionCfg)
+		ddbClient := dynamodb.NewFromConfig(regionCfg)
+		lambdaClient := lambda.NewFromConfig(regionCfg)
 
 		allScanners = append(allScanners,
+			// EC2
 			&scanner.UnattachedEBSScanner{Client: ec2Client},
 			&scanner.OpenSecurityGroupScanner{Client: ec2Client},
-			&scanner.PublicS3Scanner{Client: s3Client},
-			&scanner.IdleRDSScanner{RDS: rdsClient, CloudWatch: cwClient},
 			&scanner.UnusedEIPScanner{Client: ec2Client},
 			&scanner.OldSnapshotScanner{EC2: ec2Client, STS: stsClient},
+			// VPC
+			&scanner.UnusedNATGatewayScanner{Client: ec2Client},
+			&scanner.VPCFlowLogsScanner{Client: ec2Client},
+			// S3
+			&scanner.PublicS3Scanner{Client: s3Client},
+			&scanner.S3EncryptionScanner{Client: s3Client},
+			&scanner.S3VersioningScanner{Client: s3Client},
+			// RDS
+			&scanner.IdleRDSScanner{RDS: rdsClient, CloudWatch: cwClient},
+			// DynamoDB
+			&scanner.DynamoDBBackupScanner{Client: ddbClient},
+			&scanner.DynamoDBUnusedScanner{Client: ddbClient},
+			// Lambda
+			&scanner.LambdaRuntimeScanner{Client: lambdaClient},
+			&scanner.LambdaPublicURLScanner{Client: lambdaClient},
 		)
 	}
 
