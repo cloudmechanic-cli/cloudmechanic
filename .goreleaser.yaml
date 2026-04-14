@@ -47,7 +47,7 @@ brews:
   - repository:
       owner: "cloudmechanic-cli"
       name: homebrew-tap
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: "https://github.com/cloudmechanic-cli/cloudmechanic"
     description: "An OBD scanner for your AWS environment. Find cost leaks and security vulnerabilities in seconds."
