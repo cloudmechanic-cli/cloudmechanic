@@ -66,6 +66,16 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Detect Homebrew-managed installs and redirect to brew upgrade.
+	rawExec, _ := os.Executable()
+	if resolvedExec, resolveErr := filepath.EvalSymlinks(rawExec); resolveErr == nil {
+		if strings.Contains(resolvedExec, "/Cellar/") || strings.Contains(resolvedExec, "/homebrew/") {
+			warn.Println("\nThis binary is managed by Homebrew.")
+			bold.Println("Run:  brew upgrade cloudmechanic")
+			return nil
+		}
+	}
+
 	assetName := buildAssetName(release.TagName)
 	downloadURL := ""
 	for _, a := range release.Assets {
