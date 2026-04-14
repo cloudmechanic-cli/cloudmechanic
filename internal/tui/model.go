@@ -36,6 +36,7 @@ type state int
 const (
 	stateLoading state = iota
 	stateReady
+	stateRemediation
 )
 
 type sevFilter int
@@ -85,7 +86,9 @@ type Model struct {
 	focus        pane
 	regionCursor int // 0 = "Global", 1..N = individual regions
 	issueCursor  int
-	expanded     bool
+
+	// Remediation view scroll offset.
+	remScroll int
 
 	// Filtering and search.
 	sevFilter  sevFilter
@@ -170,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issues = nil
 		m.errors = nil
 		m.issueCursor = 0
-		m.expanded = false
+		m.remScroll = 0
 		m.filtered = nil
 		m.groups = nil
 		return m, tea.Batch(m.spinner.Tick, m.runScanCmd())
@@ -193,6 +196,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Remediation view has its own isolated key bindings.
+	if m.state == stateRemediation {
+		switch msg.String() {
+		case "q", "esc":
+			m.state = stateReady
+		case "ctrl+c":
+			return m, tea.Quit
+		case "up", "k":
+			if m.remScroll > 0 {
+				m.remScroll--
+			}
+		case "down", "j":
+			m.remScroll++
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -204,7 +224,6 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.focus = paneSidebar
 			}
-			m.expanded = false
 		}
 
 	case "r":
@@ -216,7 +235,6 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.state == stateReady {
 			m.sevFilter = m.sevFilter.next()
 			m.issueCursor = 0
-			m.expanded = false
 			m.refilter()
 		}
 
@@ -234,13 +252,11 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.regionCursor > 0 {
 				m.regionCursor--
 				m.issueCursor = 0
-				m.expanded = false
 				m.refilter()
 			}
 		} else {
 			if m.issueCursor > 0 {
 				m.issueCursor--
-				m.expanded = false
 			}
 		}
 
@@ -253,23 +269,22 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.regionCursor < maxRegion {
 				m.regionCursor++
 				m.issueCursor = 0
-				m.expanded = false
 				m.refilter()
 			}
 		} else {
 			if m.issueCursor < len(m.filtered)-1 {
 				m.issueCursor++
-				m.expanded = false
 			}
 		}
 
 	case "enter":
+		// Open the Terraform remediation view for the selected issue.
 		if m.state == stateReady && m.focus == paneMain && len(m.filtered) > 0 {
-			m.expanded = !m.expanded
+			m.state = stateRemediation
+			m.remScroll = 0
 		}
 
 	case "esc":
-		m.expanded = false
 		if m.searchText != "" {
 			m.searchText = ""
 			m.issueCursor = 0

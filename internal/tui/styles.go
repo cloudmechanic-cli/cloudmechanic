@@ -140,3 +140,101 @@ var (
 	dimStyle = lipgloss.NewStyle().
 			Foreground(colorDim)
 )
+
+// ── Remediation view ──────────────────────────────────────────────────────────
+
+var (
+	colorAmber  = lipgloss.Color("#FFD080")
+	colorOrange = lipgloss.Color("#FF8C00")
+	colorViolet = lipgloss.Color("#C792EA")
+	colorBg     = lipgloss.Color("#0D1117")
+)
+
+var (
+	remHeaderTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorCyan).
+				Background(lipgloss.Color("#0A2540")).
+				Padding(0, 2)
+
+	remSepStyle = lipgloss.NewStyle().
+			Foreground(colorDim)
+
+	remIssueLabelStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorCyan)
+
+	remIssueValueStyle = lipgloss.NewStyle().
+				Foreground(colorWhite)
+
+	remFixTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorAmber).
+				Padding(0, 1)
+
+	remFixDescStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#AAAAAA")).
+			Padding(0, 2)
+
+	// Code block container.
+	remCodeBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#3A8FD4")).
+				Padding(0, 1).
+				Background(colorBg)
+
+	remCodeFileStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("#4EC9B0")).
+				Background(colorBg).
+				Padding(0, 1)
+
+	remCodeSepStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#2A3040")).
+			Background(colorBg)
+
+	remScrollHintStyle = lipgloss.NewStyle().
+				Foreground(colorDim).
+				Background(colorBg).
+				Italic(true)
+
+	// Syntax highlighting styles.
+	remHCLKeywordStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorViolet) // resource, module, data …
+
+	remHCLBlockArgStyle = lipgloss.NewStyle().
+				Foreground(colorAmber) // "aws_s3_bucket_versioning" "fix"
+
+	remHCLAttrStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#9CDCFE")) // attribute names
+
+	remHCLEqualsStyle = lipgloss.NewStyle().
+				Foreground(colorDim) // =
+
+	remHCLStringStyle = lipgloss.NewStyle().
+				Foreground(colorGreen) // "string values"
+
+	remHCLBoolStyle = lipgloss.NewStyle().
+			Foreground(colorOrange) // true / false / numbers
+
+	remHCLRefStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#79C0FF")) // resource refs
+
+	remHCLBraceStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#ABB2BF")) // { }
+
+	remHCLInnerBlockStyle = lipgloss.NewStyle().
+				Foreground(colorAmber) // nested block names
+
+	remCommentStyle = lipgloss.NewStyle().
+			Foreground(colorDim).
+			Italic(true) // # comments
+
+	remDefaultLineStyle = lipgloss.NewStyle().
+				Foreground(colorWhite)
+
+	remFooterStyle = lipgloss.NewStyle().
+			Foreground(colorDim).
+			Padding(0, 1)
+)

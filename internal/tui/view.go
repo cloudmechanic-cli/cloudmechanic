@@ -22,6 +22,11 @@ func (m Model) View() string {
 		return ""
 	}
 
+	// Remediation view takes over the whole screen.
+	if m.state == stateRemediation {
+		return m.viewRemediation()
+	}
+
 	var sections []string
 
 	sections = append(sections, m.viewHeader())
@@ -283,13 +288,6 @@ func (m Model) viewMain(width, height int) string {
 			b.WriteString(issueSelectedStyle.Width(width - 2).Render(line))
 			b.WriteString("\n")
 			linesWritten++
-
-			if m.expanded {
-				detail := m.viewDetail(issue, width-4)
-				b.WriteString(detail)
-				b.WriteString("\n")
-				linesWritten += 4
-			}
 		} else {
 			b.WriteString(issueNormalStyle.Width(width - 2).Render(line))
 			b.WriteString("\n")
@@ -304,27 +302,6 @@ func (m Model) viewMain(width, height int) string {
 	}
 
 	return b.String()
-}
-
-func (m Model) viewDetail(issue scanner.Issue, width int) string {
-	var b strings.Builder
-	indent := "      "
-
-	b.WriteString(indent + detailLabelStyle.Render("Scanner:  ") + detailValueStyle.Render(issue.Scanner) + "\n")
-	b.WriteString(indent + detailLabelStyle.Render("Resource: ") + detailValueStyle.Render(issue.ResourceID) + "\n")
-	if issue.Region != "" {
-		b.WriteString(indent + detailLabelStyle.Render("Region:   ") + detailValueStyle.Render(issue.Region) + "\n")
-	}
-	b.WriteString(indent + detailLabelStyle.Render("Fix:      ") + suggestionStyle.Render(issue.Suggestion) + "\n")
-
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(colorCyan).
-		Padding(0, 1).
-		Width(width - 8).
-		Render(b.String())
-
-	return "    " + box
 }
 
 // --- Footer ---
@@ -342,13 +319,13 @@ func (m Model) viewFooter() string {
 			m.sevFilter)
 	}
 
-	right := " [Tab] Switch Pane  [j/k] Navigate  [Enter] Expand  [F] Filter  [/] Search  [R] Re-scan  [Q] Quit "
+	right := " [Tab] Switch Pane  [j/k] Navigate  [Enter] Terraform Fix  [F] Filter  [/] Search  [R] Re-scan  [Q] Quit "
 
 	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
 	if gap < 0 {
 		gap = 0
 		// Truncate right hints if terminal is narrow.
-		right = " [Tab] Pane [F] Filter [/] Search [R] Scan [Q] Quit "
+		right = " [Tab] Pane [Enter] Fix [F] Filter [/] Search [R] Scan [Q] Quit "
 		gap = m.width - lipgloss.Width(left) - lipgloss.Width(right)
 		if gap < 0 {
 			gap = 0
@@ -431,4 +408,206 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// ── Remediation view ─────────────────────────────────────────────────────────
+
+// viewRemediation renders the full-screen Terraform remediation editor.
+func (m Model) viewRemediation() string {
+	if len(m.filtered) == 0 || m.issueCursor >= len(m.filtered) {
+		return ""
+	}
+	issue := m.filtered[m.issueCursor]
+	rem := GetRemediation(issue)
+
+	var sections []string
+
+	// ── Header bar ──────────────────────────────────────────────────────────
+	title := remHeaderTitleStyle.Render("  TERRAFORM REMEDIATION  ")
+	sections = append(sections, title)
+	sections = append(sections, remSepStyle.Render(strings.Repeat("─", m.width-1)))
+	sections = append(sections, "")
+
+	// ── Issue context ────────────────────────────────────────────────────────
+	badge := severityBadge(issue.Severity)
+	svc := serviceFromScanner(issue.Scanner)
+	sections = append(sections, fmt.Sprintf("  %s  %s  %s",
+		badge,
+		lipgloss.NewStyle().Bold(true).Foreground(colorCyan).Render(svc),
+		remIssueValueStyle.Render(issue.Scanner),
+	))
+	sections = append(sections, fmt.Sprintf("  %s %s",
+		remIssueLabelStyle.Render("Resource:"),
+		remIssueValueStyle.Render(issue.ResourceID),
+	))
+	if issue.Region != "" {
+		regionLabel := issue.Region
+		if regionLabel == "global" {
+			regionLabel = "global (IAM)"
+		}
+		sections = append(sections, fmt.Sprintf("  %s %s",
+			remIssueLabelStyle.Render("Region:  "),
+			remIssueValueStyle.Render(regionLabel),
+		))
+	}
+	sections = append(sections, "")
+
+	// ── Fix title and description ────────────────────────────────────────────
+	sections = append(sections, remFixTitleStyle.Render(rem.Title))
+	sections = append(sections, remFixDescStyle.Width(m.width-4).Render(rem.Description))
+	sections = append(sections, "")
+
+	// ── Code block ──────────────────────────────────────────────────────────
+	// Calculate available height for the code block.
+	// header(1) + sep(1) + blank(1) + issue lines(2-3) + blank(1) +
+	// fix title(1) + fix desc(~2) + blank(1) + footer(2) = ~13 lines overhead
+	const overheadLines = 14
+	codeViewHeight := m.height - overheadLines
+	if codeViewHeight < 5 {
+		codeViewHeight = 5
+	}
+
+	codeLines := strings.Split(rem.TerraformCode, "\n")
+	totalLines := len(codeLines)
+
+	// Clamp scroll so we can never scroll past the last line.
+	maxScroll := totalLines - codeViewHeight
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	scroll := m.remScroll
+	if scroll > maxScroll {
+		scroll = maxScroll
+	}
+
+	visibleLines := codeLines[scroll:]
+	if len(visibleLines) > codeViewHeight {
+		visibleLines = visibleLines[:codeViewHeight]
+	}
+
+	// Render each visible line with HCL syntax highlighting.
+	var codeContent strings.Builder
+	for _, line := range visibleLines {
+		codeContent.WriteString(syntaxHighlightHCL(line) + "\n")
+	}
+
+	// Code block width: terminal width minus outer padding and border.
+	codeWidth := m.width - 6
+	if codeWidth < 40 {
+		codeWidth = 40
+	}
+
+	// File name header row inside the code block.
+	scrollInfo := ""
+	if maxScroll > 0 {
+		scrollInfo = remScrollHintStyle.Render(
+			fmt.Sprintf("  [%d–%d / %d lines]  j/k to scroll",
+				scroll+1, minInt(scroll+codeViewHeight, totalLines), totalLines))
+	}
+	fileHeader := remCodeFileStyle.Render(" main.tf ") + scrollInfo
+	codeSep := remCodeSepStyle.Render(strings.Repeat("─", codeWidth))
+
+	innerContent := fileHeader + "\n" + codeSep + "\n" + codeContent.String()
+
+	codeBlock := remCodeBorderStyle.
+		Width(codeWidth).
+		Render(innerContent)
+
+	sections = append(sections, "  "+codeBlock)
+
+	// ── Footer ───────────────────────────────────────────────────────────────
+	footerHints := remFooterStyle.Render(
+		"  [j/k] Scroll   [Esc / q] Back to Issues   [Ctrl+C] Quit",
+	)
+	sections = append(sections, "")
+	sections = append(sections, remSepStyle.Render(strings.Repeat("─", m.width-1)))
+	sections = append(sections, footerHints)
+
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+}
+
+// syntaxHighlightHCL applies basic HCL/Terraform syntax colouring to one line.
+func syntaxHighlightHCL(line string) string {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return ""
+	}
+
+	// Compute leading whitespace.
+	indentLen := len(line) - len(strings.TrimLeft(line, " \t"))
+	indent := line[:indentLen]
+
+	// Comments
+	if strings.HasPrefix(trimmed, "#") {
+		return remCommentStyle.Render(line)
+	}
+
+	// Lone closing braces / brackets
+	switch trimmed {
+	case "}", "})", "}]", "],", "},", "]":
+		return remHCLBraceStyle.Render(line)
+	}
+
+	// Top-level HCL block keywords: resource, module, data, output, …
+	hclKeywords := []string{
+		"resource", "module", "data", "output",
+		"variable", "locals", "provider", "terraform",
+	}
+	for _, kw := range hclKeywords {
+		if trimmed == kw || strings.HasPrefix(trimmed, kw+" ") {
+			rest := trimmed[len(kw):]
+			return indent + remHCLKeywordStyle.Render(kw) + remHCLBlockArgStyle.Render(rest)
+		}
+	}
+
+	// Assignment: attr_name = <value>
+	if eqIdx := strings.Index(trimmed, " = "); eqIdx != -1 {
+		attr := trimmed[:eqIdx]
+		val := trimmed[eqIdx+3:]
+		return indent +
+			remHCLAttrStyle.Render(attr) +
+			remHCLEqualsStyle.Render(" = ") +
+			styleHCLValue(val)
+	}
+
+	// Nested block openers: schedule {, create_rule {, etc.
+	if strings.HasSuffix(trimmed, " {") || trimmed == "{" {
+		return indent + remHCLInnerBlockStyle.Render(trimmed)
+	}
+
+	return indent + remDefaultLineStyle.Render(trimmed)
+}
+
+// styleHCLValue colours the right-hand side of an HCL assignment.
+func styleHCLValue(v string) string {
+	// String literals
+	if strings.HasPrefix(v, `"`) {
+		return remHCLStringStyle.Render(v)
+	}
+	// Heredoc / function calls (jsonencode, file, etc.)
+	if strings.HasPrefix(v, "jsonencode(") || strings.HasPrefix(v, "<<") ||
+		strings.HasPrefix(v, "file(") || strings.HasPrefix(v, "filebase64") {
+		return remHCLRefStyle.Render(v)
+	}
+	// Booleans and null
+	switch v {
+	case "true", "false", "null":
+		return remHCLBoolStyle.Render(v)
+	}
+	// Numbers
+	isNum := len(v) > 0
+	for _, c := range v {
+		if (c < '0' || c > '9') && c != '.' && c != '-' {
+			isNum = false
+			break
+		}
+	}
+	if isNum {
+		return remHCLBoolStyle.Render(v)
+	}
+	// Resource references (e.g., aws_iam_role.flow_logs.arn)
+	if strings.Contains(v, ".") && !strings.Contains(v, " ") {
+		return remHCLRefStyle.Render(v)
+	}
+	return remDefaultLineStyle.Render(v)
 }
