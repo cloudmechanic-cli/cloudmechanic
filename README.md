@@ -250,7 +250,7 @@ cloudmechanic scan --profile staging --region eu-west-1 -o json
 
 ## Interactive Dashboard (TUI)
 
-Launch a full-screen two-pane terminal dashboard with real-time scanning, region filtering, severity filtering, live search, and instant Terraform remediation code:
+Launch a full-screen terminal dashboard with real-time scanning, region filtering, severity filtering, live search, and instant Terraform remediation code:
 
 ```bash
 cloudmechanic dashboard
@@ -259,31 +259,39 @@ cloudmechanic dashboard --profile production
 ```
 
 ```
-  ╭─ REGIONS ────────────────╮  ╭─ EC2 ────────────────────────────────────────────────────────╮
-  │  All Regions  3🔴 2🟡    │  │  SEVERITY    SERVICE    DESCRIPTION                           │
-  │  us-east-1    2🔴 1🟡    │  │                                                               │
-  │  eu-west-1    1🔴 1🟡    │  │  EC2                                                          │
-  │                           │  │  CRITICAL    EC2       SG sg-0db0d4a allows SSH from 0.0.0.0 │
-  │  SUMMARY                  │  │  WARNING     EC2       EBS vol-0abc123 is unattached          │
-  │  3  Critical               │  │                                                               │
-  │  2  Warnings               │  │  S3                                                           │
-  │  5  Total                  │  │  CRITICAL    S3        my-bucket has no Public Access Block   │
-  │                           │  │                                                               │
-  ╰───────────────────────────╯  ╰───────────────────────────────────────────────────────────────╯
-   us-east-1 | 1.2s | Filter: All     [Tab] Pane  [j/k] Navigate  [Enter] Terraform Fix  [Q] Quit
+ ☁  CloudMechanic  ·  AWS Security Scanner
+ ╭──────────────╮  ╭──────────────╮
+ │  ⬡  Regions  │  │  ≡  Issues  │   ← Tab to switch. Active pane has bright border.
+ ╰──────────────╯  ╰──────────────╯
+
+ ╭────────────────────────╮  ╭──────────────────────────────────────────────────────╮
+ │ REGIONS                │  │  SEVERITY    SERVICE    DESCRIPTION                  │
+ │                        │  │                                                      │
+ │  ◉ All Regions  3🔴 2🟡 │  │  🖥  EC2                                             │
+ │    us-east-1    2🔴 1🟡 │  │   CRITICAL   EC2       sg-0db0d4a allows SSH 0.0.0.0│
+ │    eu-west-1    1🔴 1🟡 │  │   WARNING    EC2       vol-0abc123 is unattached     │
+ │                        │  │                                                      │
+ │ SUMMARY                │  │  🪣  S3                                              │
+ │  3  Critical            │  │   CRITICAL   S3        my-bucket has no PAB enabled │
+ │  2  Warnings            │  │                                                     │
+ │  5  Total               │  │                                                     │
+ ╰────────────────────────╯  ╰──────────────────────────────────────────────────────╯
+ ☁ us-east-1  1.2s   Tab Switch  ↑↓ Nav  ↵ Fix  F Filter  / Search  R Rescan  Q Quit
 ```
+
+**Visual design:** Catppuccin Macchiato dark theme — the active pane has a bright blue border, the inactive pane is dimmed. The tab bar above the panes shows which side is focused.
 
 ### Dashboard Keybindings
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch focus between region sidebar and issue list |
+| `Tab` | Switch focus between Regions sidebar and Issues list |
 | `j` / `↓` | Move down |
 | `k` / `↑` | Move up |
 | `Enter` | **Open Terraform remediation view for the selected issue** |
 | `F` | Cycle severity filter — All → Critical Only → Warnings Only |
-| `/` | Live search across issue descriptions, resource IDs, and scanner names |
-| `Esc` | Clear search / close remediation view |
+| `/` | Live search across descriptions, resource IDs, and scanner names |
+| `Esc` | Clear search |
 | `R` | Re-run the scan |
 | `Q` / `Ctrl+C` | Quit |
 
@@ -383,6 +391,7 @@ Terraform snippets are available for all 15 scanner types:
 - [x] Two-pane explorer with region filtering, severity filter, and live search
 - [x] Terraform remediation view — press Enter on any issue for ready-to-apply HCL
 - [x] Self-update command (`cloudmechanic upgrade`)
+- [x] Premium UI overhaul — Catppuccin Macchiato theme, visual tab bar, pill-shaped status bar, service emoji icons
 - [ ] HTML report export
 - [ ] Slack / webhook notifications
 - [ ] Cost estimation per issue

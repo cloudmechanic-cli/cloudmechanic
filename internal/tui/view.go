@@ -9,13 +9,6 @@ import (
 	"github.com/cloudmechanic-cli/cloudmechanic/internal/scanner"
 )
 
-const logo = `
-  ______  __                    __  __  ___              __                   _
- / ____/ / /____   __  __ ____/ / /  |/  /___   _____  / /_   ____ _ ____   (_)_____
-/ /     / // __ \ / / / // __  / / /|_/ // _ \ / ___/ / __ \ / __ '// __ \ / // ___/
-/ /___ / // /_/ // /_/ // /_/ / / /  / //  __// /__  / / / // /_/ // / / // // /__
-\____//_/ \____/ \__,_/ \__,_/ /_/  /_/ \___/ \___/ /_/ /_/ \__,_//_/ /_//_/ \___/`
-
 // View renders the entire UI.
 func (m Model) View() string {
 	if m.width == 0 {
@@ -28,8 +21,8 @@ func (m Model) View() string {
 	}
 
 	var sections []string
-
 	sections = append(sections, m.viewHeader())
+	sections = append(sections, m.viewTabBar())
 
 	if m.state == stateLoading {
 		sections = append(sections, m.viewLoading())
@@ -42,17 +35,38 @@ func (m Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
+// viewHeader renders a minimal single-line title bar.
 func (m Model) viewHeader() string {
-	art := headerStyle.Render(logo)
-	subtitle := dimStyle.Padding(0, 2).Render("An OBD scanner for your AWS environment")
-	return lipgloss.JoinVertical(lipgloss.Left, art, subtitle)
+	title := headerTitleStyle.Render("☁  CloudMechanic")
+	dot := headerDotStyle.Render("  ·  ")
+	sub := headerSubStyle.Render("AWS Security Scanner")
+
+	line := title + dot + sub
+	return headerBarStyle.Width(m.width).Render(line)
 }
 
+// viewTabBar renders two button-like tabs above the panes showing which is active.
+func (m Model) viewTabBar() string {
+	var regTab, issTab string
+	if m.focus == paneSidebar {
+		regTab = tabActiveStyle.Render("  ⬡  Regions  ")
+		issTab = tabInactiveStyle.Render("  ≡  Issues   ")
+	} else {
+		regTab = tabInactiveStyle.Render("  ⬡  Regions  ")
+		issTab = tabActiveStyle.Render("  ≡  Issues   ")
+	}
+	return "\n " + regTab + "  " + issTab + "\n"
+}
+
+// viewLoading renders the scanning progress screen.
 func (m Model) viewLoading() string {
-	s := fmt.Sprintf("\n   %s Scanning AWS resources...\n\n", m.spinner.View())
+	heading := lipgloss.NewStyle().Bold(true).Foreground(catBlue).
+		Render("Scanning AWS resources...")
+	s := fmt.Sprintf("\n   %s  %s\n\n", m.spinner.View(), heading)
 	for _, r := range m.builder.Regions {
-		s += fmt.Sprintf("     %s %s\n",
-			lipgloss.NewStyle().Foreground(colorGreen).Bold(true).Render("*"), r)
+		s += fmt.Sprintf("     %s  %s\n",
+			lipgloss.NewStyle().Foreground(catTeal).Render("◌"),
+			lipgloss.NewStyle().Foreground(catSubtext1).Render(r))
 	}
 	return s
 }
@@ -60,14 +74,14 @@ func (m Model) viewLoading() string {
 // viewBody renders the two-pane explorer layout.
 func (m Model) viewBody() string {
 	sidebarWidth := 30
-	// Account for border (2 chars each side) and gap
+	// Account for border (2 chars each side) and gap.
 	mainWidth := m.width - sidebarWidth - 6
 	if mainWidth < 40 {
 		mainWidth = 40
 	}
 
-	// Height for panes: total - header(~8) - footer(1) - padding
-	paneHeight := m.height - 11
+	// Overhead: header(1) + tabbar(3) + footer(1) + padding(3) = 8
+	paneHeight := m.height - 8
 	if paneHeight < 8 {
 		paneHeight = 8
 	}
@@ -75,13 +89,16 @@ func (m Model) viewBody() string {
 	sidebar := m.viewSidebar(sidebarWidth, paneHeight)
 	main := m.viewMain(mainWidth, paneHeight)
 
-	// Apply focused/unfocused borders.
+	// Active pane: bright border + full colour content.
+	// Inactive pane: dim border + faint content for instant focus clarity.
 	var sidebarBox, mainBox string
 	if m.focus == paneSidebar {
 		sidebarBox = focusedBorder.Width(sidebarWidth).Height(paneHeight).Render(sidebar)
-		mainBox = unfocusedBorder.Width(mainWidth).Height(paneHeight).Render(main)
+		mainBox = unfocusedBorder.Width(mainWidth).Height(paneHeight).Render(
+			faintStyle.Render(main))
 	} else {
-		sidebarBox = unfocusedBorder.Width(sidebarWidth).Height(paneHeight).Render(sidebar)
+		sidebarBox = unfocusedBorder.Width(sidebarWidth).Height(paneHeight).Render(
+			faintStyle.Render(sidebar))
 		mainBox = focusedBorder.Width(mainWidth).Height(paneHeight).Render(main)
 	}
 
@@ -271,7 +288,8 @@ func (m Model) viewMain(width, height int) string {
 		item := items[i]
 
 		if item.isHeader {
-			b.WriteString(groupHeaderStyle.Render(fmt.Sprintf("  %s", item.header)))
+			icon := serviceIcon(item.header)
+			b.WriteString(groupHeaderStyle.Render(fmt.Sprintf("  %s%s", icon, item.header)))
 			b.WriteString("\n")
 			linesWritten++
 			continue
@@ -307,33 +325,73 @@ func (m Model) viewMain(width, height int) string {
 // --- Footer ---
 
 func (m Model) viewFooter() string {
-	left := ""
+	// ── Left: context info ───────────────────────────────────────────────────
+	var left string
 	if m.state == stateReady {
 		region := m.selectedRegion()
 		if region == "" {
 			region = "All Regions"
 		}
-		left = fmt.Sprintf(" %s | %s | Filter: %s",
-			region,
-			m.elapsed.Round(time.Millisecond),
-			m.sevFilter)
+		left = statusRegionStyle.Render(" ☁  "+region+" ") +
+			dimStyle.Render("  "+m.elapsed.Round(time.Millisecond).String())
+		if m.sevFilter != filterAll {
+			left += "  " + filterActiveStyle.Render("⚡ "+m.sevFilter.String())
+		}
+		if m.searchText != "" {
+			left += "  " + searchStyle.Render("/ "+m.searchText)
+		}
 	}
 
-	right := " [Tab] Switch Pane  [j/k] Navigate  [Enter] Terraform Fix  [F] Filter  [/] Search  [R] Re-scan  [Q] Quit "
+	// ── Right: pill-shaped key hints ─────────────────────────────────────────
+	pills := renderPill("Tab", "Switch") +
+		renderPill("↑↓", "Nav") +
+		renderPill("↵", "Fix") +
+		renderPill("F", "Filter") +
+		renderPill("/", "Search") +
+		renderPill("R", "Rescan") +
+		renderPill("Q", "Quit")
 
-	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
+	gap := m.width - lipgloss.Width(left) - lipgloss.Width(pills)
 	if gap < 0 {
-		gap = 0
-		// Truncate right hints if terminal is narrow.
-		right = " [Tab] Pane [Enter] Fix [F] Filter [/] Search [R] Scan [Q] Quit "
-		gap = m.width - lipgloss.Width(left) - lipgloss.Width(right)
+		// Condensed version for narrow terminals.
+		pills = renderPill("↵", "Fix") + renderPill("⇥", "Switch") + renderPill("Q", "Quit")
+		gap = m.width - lipgloss.Width(left) - lipgloss.Width(pills)
 		if gap < 0 {
 			gap = 0
 		}
 	}
 
-	bar := left + strings.Repeat(" ", gap) + right
+	bar := left + strings.Repeat(" ", gap) + pills
 	return statusBarStyle.Width(m.width).Render(bar)
+}
+
+// renderPill returns a styled key + label pair for the status bar.
+func renderPill(key, action string) string {
+	k := statusKeyStyle.Render(key)
+	a := statusActionStyle.Render(action)
+	return k + a + " "
+}
+
+// serviceIcon returns an emoji prefix for a service category.
+func serviceIcon(svc string) string {
+	switch svc {
+	case "EC2":
+		return "🖥  "
+	case "S3":
+		return "🪣  "
+	case "RDS":
+		return "🗄  "
+	case "IAM":
+		return "🔑  "
+	case "DynamoDB":
+		return "⚡  "
+	case "VPC":
+		return "☁  "
+	case "Lambda":
+		return "λ  "
+	default:
+		return "◈  "
+	}
 }
 
 // --- Helpers ---
