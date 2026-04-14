@@ -171,7 +171,14 @@ func resolveRegions(ctx context.Context, cfg aws.Config, allRegions bool) ([]str
 		return []string{region}, nil
 	}
 
-	ec2Client := ec2.NewFromConfig(cfg)
+	// DescribeRegions requires a seed region to resolve the EC2 endpoint.
+	// Default to us-east-1 if none is configured.
+	seedCfg := cfg.Copy()
+	if seedCfg.Region == "" {
+		seedCfg.Region = "us-east-1"
+	}
+
+	ec2Client := ec2.NewFromConfig(seedCfg)
 	out, err := ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{
 		Filters: []ec2types.Filter{
 			{
