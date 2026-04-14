@@ -24,11 +24,11 @@ Teams discover these problems when the bill spikes or after a breach. By then, t
 
 ## The Solution
 
-**CloudMechanic** is a fast, single-binary CLI tool that scans your AWS account and delivers a color-coded, actionable report in your terminal.
+**CloudMechanic** is a fast, single-binary CLI tool that scans your AWS account and delivers a color-coded, actionable report in your terminal — with exact Terraform code to fix every issue.
 
 - **Fast** — runs all checks concurrently using goroutines. Full scans complete in under 1 second.
 - **Zero config** — uses your existing AWS CLI credentials. No agents, no SaaS, no signup.
-- **Actionable** — every finding includes the resource ID and a specific remediation step.
+- **Actionable** — every finding includes the resource ID, a specific remediation step, and **ready-to-apply Terraform HCL**.
 - **Extensible** — built on a `Scanner` interface. Adding a new check is one file and one line of registration.
 
 ```
@@ -42,9 +42,6 @@ Security Issues (3):
      Fix:      Restrict SSH access to specific IP ranges or use AWS Systems Manager Session Manager instead.
   🔴 [CRITICAL] Security Group sg-09d33757e356808df (launch-wizard-2) allows SSH (port 22) from 0.0.0.0/0
      Resource: sg-09d33757e356808df
-     Fix:      Restrict SSH access to specific IP ranges or use AWS Systems Manager Session Manager instead.
-  🔴 [CRITICAL] Security Group sg-02e017ca8231040c6 (launch-wizard-1) allows SSH (port 22) from 0.0.0.0/0
-     Resource: sg-02e017ca8231040c6
      Fix:      Restrict SSH access to specific IP ranges or use AWS Systems Manager Session Manager instead.
 
 --------------------------------------------------
@@ -68,6 +65,13 @@ cloudmechanic scan
 
 # 4. Or launch the interactive dashboard
 cloudmechanic dashboard
+```
+
+**Linux (no Homebrew needed):**
+```bash
+curl -L https://github.com/cloudmechanic-cli/cloudmechanic/releases/download/v1.6.2/cloudmechanic_1.6.2_linux_amd64.tar.gz -o /tmp/cm.tar.gz \
+  && sudo tar -xzf /tmp/cm.tar.gz -C /tmp/ \
+  && sudo install -m 755 /tmp/cloudmechanic /usr/local/bin/cloudmechanic
 ```
 
 ## Prerequisites
@@ -158,15 +162,25 @@ brew tap cloudmechanic-cli/tap
 brew install cloudmechanic
 ```
 
+### Direct Binary (Linux / macOS)
+
+```bash
+# Linux amd64
+curl -L https://github.com/cloudmechanic-cli/cloudmechanic/releases/download/v1.6.2/cloudmechanic_1.6.2_linux_amd64.tar.gz -o /tmp/cm.tar.gz \
+  && sudo tar -xzf /tmp/cm.tar.gz -C /tmp/ \
+  && sudo install -m 755 /tmp/cloudmechanic /usr/local/bin/cloudmechanic
+
+# Linux arm64 (Graviton)
+curl -L https://github.com/cloudmechanic-cli/cloudmechanic/releases/download/v1.6.2/cloudmechanic_1.6.2_linux_arm64.tar.gz -o /tmp/cm.tar.gz \
+  && sudo tar -xzf /tmp/cm.tar.gz -C /tmp/ \
+  && sudo install -m 755 /tmp/cloudmechanic /usr/local/bin/cloudmechanic
+```
+
 ### Go Install
 
 ```bash
 go install github.com/cloudmechanic-cli/cloudmechanic@latest
 ```
-
-### Download Binary
-
-Grab the latest release for your platform from the [Releases](https://github.com/cloudmechanic-cli/cloudmechanic/releases) page.
 
 ### Build from Source
 
@@ -214,6 +228,14 @@ cloudmechanic scan -o json
 cloudmechanic scan -o csv > report.csv
 ```
 
+### Self-Update
+
+```bash
+cloudmechanic upgrade
+```
+
+Checks the latest GitHub release, downloads the correct binary for your OS/arch, and replaces the current binary in-place. No Homebrew or package manager required.
+
 ### Check Version
 
 ```bash
@@ -228,43 +250,101 @@ cloudmechanic scan --profile staging --region eu-west-1 -o json
 
 ## Interactive Dashboard (TUI)
 
-Launch a full-screen terminal dashboard with real-time scanning, region sidebar, and expandable issue details:
+Launch a full-screen two-pane terminal dashboard with real-time scanning, region filtering, severity filtering, live search, and instant Terraform remediation code:
 
 ```bash
 cloudmechanic dashboard
-```
-
-```bash
 cloudmechanic dashboard --all-regions
 cloudmechanic dashboard --profile production
 ```
 
 ```
-  ______  __                    __  __  ___              __                   _
- / ____/ / /____   __  __ ____/ / /  |/  /___   _____  / /_   ____ _ ____   (_)_____
-/ /     / // __ \ / / / // __  / / /|_/ // _ \ / ___/ / __ \ / __ '// __ \ / // ___/
-/ /___ / // /_/ // /_/ // /_/ / / /  / //  __// /__  / / / // /_/ // / / // // /__
-\____//_/ \____/ \__,_/ \__,_/ /_/  /_/ \___/ \___/ /_/ /_/ \__,_//_/ /_//_/ \___/
-
-  REGIONS            CRITICAL  Open SG sg-0db0d4a (caf-bastion-sg) allows SSH from 0.0.0.0/0
-  * us-east-1        WARNING   Unattached EBS vol-0abc123 in available state
-                     CRITICAL  IAM user admin@corp has no MFA device enabled
-  SUMMARY              ...
-  3 Critical
-  2 Warnings
-  5 Total
+  ╭─ REGIONS ────────────────╮  ╭─ EC2 ────────────────────────────────────────────────────────╮
+  │  All Regions  3🔴 2🟡    │  │  SEVERITY    SERVICE    DESCRIPTION                           │
+  │  us-east-1    2🔴 1🟡    │  │                                                               │
+  │  eu-west-1    1🔴 1🟡    │  │  EC2                                                          │
+  │                           │  │  CRITICAL    EC2       SG sg-0db0d4a allows SSH from 0.0.0.0 │
+  │  SUMMARY                  │  │  WARNING     EC2       EBS vol-0abc123 is unattached          │
+  │  3  Critical               │  │                                                               │
+  │  2  Warnings               │  │  S3                                                           │
+  │  5  Total                  │  │  CRITICAL    S3        my-bucket has no Public Access Block   │
+  │                           │  │                                                               │
+  ╰───────────────────────────╯  ╰───────────────────────────────────────────────────────────────╯
+   us-east-1 | 1.2s | Filter: All     [Tab] Pane  [j/k] Navigate  [Enter] Terraform Fix  [Q] Quit
 ```
 
 ### Dashboard Keybindings
 
 | Key | Action |
 |-----|--------|
-| `j` / `Down Arrow` | Move to next issue |
-| `k` / `Up Arrow` | Move to previous issue |
-| `Enter` | Expand issue — show resource ID, scanner, and remediation steps |
-| `Esc` | Collapse expanded issue |
+| `Tab` | Switch focus between region sidebar and issue list |
+| `j` / `↓` | Move down |
+| `k` / `↑` | Move up |
+| `Enter` | **Open Terraform remediation view for the selected issue** |
+| `F` | Cycle severity filter — All → Critical Only → Warnings Only |
+| `/` | Live search across issue descriptions, resource IDs, and scanner names |
+| `Esc` | Clear search / close remediation view |
 | `R` | Re-run the scan |
-| `Q` / `Ctrl+C` | Quit the dashboard |
+| `Q` / `Ctrl+C` | Quit |
+
+## Terraform Remediation View
+
+Press `Enter` on any issue in the dashboard to open a full-screen code editor showing the exact Terraform HCL to fix it — with syntax highlighting.
+
+```
+  TERRAFORM REMEDIATION
+  ─────────────────────────────────────────────────────────────────
+  CRITICAL  VPC  VPCs Without Flow Logs
+  Resource: vpc-0abc1234def567890         Region: us-east-1
+
+  Enable VPC Flow Logs to CloudWatch
+  Flow Logs capture metadata for every IP packet crossing your VPC.
+  Essential for security forensics, intrusion detection, and compliance.
+
+  ╭─ main.tf ──────────────────────────────────────────────────────╮
+  │ resource "aws_iam_role" "flow_logs" {                          │
+  │   name = "vpc-flow-logs-role"                                  │
+  │                                                                │
+  │   assume_role_policy = jsonencode({                            │
+  │     Version = "2012-10-17"                                     │
+  │     Statement = [{                                             │
+  │       Effect    = "Allow"                                      │
+  │       Action    = "sts:AssumeRole"                             │
+  │       Principal = { Service = "vpc-flow-logs.amazonaws.com" }  │
+  │     }]                                                         │
+  │   })                                                           │
+  │ }                                                              │
+  │                                                                │
+  │ resource "aws_flow_log" "fix" {                                │
+  │   iam_role_arn    = aws_iam_role.flow_logs.arn                 │
+  │   log_destination = aws_cloudwatch_log_group.flow_logs.arn     │
+  │   traffic_type    = "ALL"                                      │
+  │   vpc_id          = "<YOUR_VPC_ID>"                            │
+  │ }                                                              │
+  ╰────────────────────────────────────────────────────────────────╯
+
+  [j/k] Scroll   [Esc / q] Back to Issues   [Ctrl+C] Quit
+```
+
+Terraform snippets are available for all 15 scanner types:
+
+| Issue | Terraform Resource |
+|---|---|
+| Public S3 Buckets | `aws_s3_bucket_public_access_block` |
+| S3 Without Encryption | `aws_s3_bucket_server_side_encryption_configuration` |
+| S3 Without Versioning | `aws_s3_bucket_versioning` |
+| VPCs Without Flow Logs | `aws_flow_log` + IAM role + CloudWatch log group |
+| Open Security Groups (SSH) | `aws_security_group_rule` |
+| Unused Elastic IPs | `aws_eip_association` |
+| Unattached EBS Volumes | `aws_volume_attachment` |
+| Old EBS Snapshots | `aws_dlm_lifecycle_policy` |
+| Unused NAT Gateways | VPC module config |
+| IAM Users Without MFA | `aws_iam_policy` with MFA deny condition |
+| Idle RDS Instances | Stop/delete guidance |
+| DynamoDB Without Backups | `point_in_time_recovery` block |
+| DynamoDB Provisioned Capacity | `billing_mode = "PAY_PER_REQUEST"` |
+| Lambda Deprecated Runtimes | `runtime` update |
+| Lambda Public Function URLs | `authorization_type = "AWS_IAM"` |
 
 ## Current Scanners
 
@@ -300,10 +380,13 @@ cloudmechanic dashboard --profile production
 - [x] Lambda deprecated runtime & public URL checks
 - [x] S3 encryption & versioning checks
 - [x] Interactive TUI dashboard (`cloudmechanic dashboard`)
-- [ ] Custom severity thresholds
+- [x] Two-pane explorer with region filtering, severity filter, and live search
+- [x] Terraform remediation view — press Enter on any issue for ready-to-apply HCL
+- [x] Self-update command (`cloudmechanic upgrade`)
 - [ ] HTML report export
 - [ ] Slack / webhook notifications
 - [ ] Cost estimation per issue
+- [ ] Custom severity thresholds
 
 ## Contributing
 
